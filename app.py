@@ -1,6 +1,7 @@
 import os
 import requests
 import logging
+import time
 
 from flask import Flask, request, make_response, jsonify
 from werkzeug.utils import secure_filename
@@ -26,7 +27,7 @@ def init_loggers():
     c_logger.setLevel(logging.DEBUG)
     c_logger.propagate = True
 
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(threadName)s - %(message)s")
 
     fh = logging.FileHandler("logfile.log")
     fh.setLevel(logging.DEBUG)
@@ -71,6 +72,10 @@ def scan_file(file_name):
         res_id = res.json()["data"]["id"]
         
         analysis_info = requests.get(VIRUSTOTAL_BASE_URL + f"/analyses/{res_id}", headers=headers)
+
+        while analysis_info.json()["data"]["attributes"]["status"] != "completed":
+            time.sleep(2)
+            analysis_info = requests.get(VIRUSTOTAL_BASE_URL + f"/analyses/{res_id}", headers=headers)
 
         return analysis_info.json()
     except:
