@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "./files"
 
 ### VIRUSTOTAL CONSTS ###
-VIRUSTOTAL_BASE_URL = "https://www.virustotal.com/api/v"
+VIRUSTOTAL_BASE_URL = "https://www.virustotal.com/api/v3"
 VIRUSTOTAL_API_KEY = "7b796cd4b1043a7dabba77bd730374a9b3a1f31425b0c5fc54eaf5d89bc22fbf"
 
 def init_loggers():
@@ -36,7 +36,7 @@ def upload_file():
     Uploads a file to ./files directory
     """
     if "file" not in request.files:
-            return make_response(jsonify({"error": "No file received"}), 400)
+        return make_response(jsonify({"error": "No file received"}), 400)
 
     try:
         input_file = request.files["file"]
