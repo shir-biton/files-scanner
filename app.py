@@ -5,6 +5,7 @@ import logging
 from flask import Flask, request, make_response, jsonify
 from werkzeug.utils import secure_filename
 
+### APP CONFIG ###
 app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = "./files"
 
@@ -13,12 +14,17 @@ VIRUSTOTAL_BASE_URL = "https://www.virustotal.com/api/v3"
 VIRUSTOTAL_API_KEY = "7b796cd4b1043a7dabba77bd730374a9b3a1f31425b0c5fc54eaf5d89bc22fbf"
 
 def init_loggers():
+    """
+    Initializing two app loggers writing to logfile.log:
+    root - General logs and incoming requests
+    c_logger - Outcoming requests (via requests library)
+    """
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
 
-    logger = logging.getLogger("requests.packages.urllib3")
-    logger.setLevel(logging.DEBUG)
-    logger.propagate = True
+    c_logger = logging.getLogger("requests.packages.urllib3")
+    c_logger.setLevel(logging.DEBUG)
+    c_logger.propagate = True
 
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
@@ -27,13 +33,13 @@ def init_loggers():
     fh.setFormatter(formatter)
 
     root.addHandler(fh)
-    logger.addHandler(fh)
+    c_logger.addHandler(fh)
 
 
 @app.route("/scan_file", methods=["POST"])
 def upload_file():
     """
-    Uploads a file to ./files directory
+    Receives and uploads a file to ./files directory
     """
     if "file" not in request.files:
         return make_response(jsonify({"error": "No file received"}), 400)
