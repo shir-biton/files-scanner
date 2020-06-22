@@ -1,40 +1,15 @@
 import os
 import requests
-import logging
 import time
 
 from flask import Flask, request, make_response, jsonify
 from werkzeug.utils import secure_filename
 
+from config import *
+
 ### APP CONFIG ###
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = "./files"
-
-### VIRUSTOTAL CONSTS ###
-VIRUSTOTAL_BASE_URL = "https://www.virustotal.com/api/v3"
-VIRUSTOTAL_API_KEY = "7b796cd4b1043a7dabba77bd730374a9b3a1f31425b0c5fc54eaf5d89bc22fbf"
-
-def init_loggers():
-    """
-    Initializing two app loggers writing to logfile.log:
-    root - General logs and incoming requests
-    c_logger - Outcoming requests (via requests library)
-    """
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
-
-    c_logger = logging.getLogger("requests.packages.urllib3")
-    c_logger.setLevel(logging.DEBUG)
-    c_logger.propagate = True
-
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(threadName)s - %(message)s")
-
-    fh = logging.FileHandler("logfile.log")
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(formatter)
-
-    root.addHandler(fh)
-    c_logger.addHandler(fh)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
 @app.route("/scan_file", methods=["POST"])
@@ -53,6 +28,7 @@ def upload_file():
         return make_response(scan_file(file_name))
     except Exception as e:
         return make_response(jsonify({"error": "Bad Request"}), 400)
+
 
 def scan_file(file_name):
     """
@@ -73,6 +49,7 @@ def scan_file(file_name):
         
         analysis_info = requests.get(VIRUSTOTAL_BASE_URL + f"/analyses/{res_id}", headers=headers)
 
+        # Check whether analysis is completed before sending response
         while analysis_info.json()["data"]["attributes"]["status"] != "completed":
             time.sleep(2)
             analysis_info = requests.get(VIRUSTOTAL_BASE_URL + f"/analyses/{res_id}", headers=headers)
@@ -80,8 +57,3 @@ def scan_file(file_name):
         return analysis_info.json()
     except:
         return {"error": "Unable to connect to virustotal service"}
-
-
-if __name__ == "__main__":
-    init_loggers()
-    app.run()
