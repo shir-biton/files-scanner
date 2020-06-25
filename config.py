@@ -1,4 +1,6 @@
 ### APP CONSTS ###
+HOST = "0.0.0.0"
+PORT = 8080
 UPLOAD_FOLDER = "./files"
 
 

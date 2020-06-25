@@ -1,59 +1,44 @@
 import os
-import requests
-import time
+import json
+import cgi
+from http.server import SimpleHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 
-from flask import Flask, request, make_response, jsonify
-from werkzeug.utils import secure_filename
+from config import UPLOAD_FOLDER
+from utils import scan_file
 
-from config import *
+class Handler(SimpleHTTPRequestHandler):
+    def do_POST(self):
+        form = cgi.FieldStorage(
+            fp=self.rfile,
+            headers=self.headers,
+            environ={"REQUEST_METHOD": "POST",
+                     "CONTENT_TYPE": self.headers["Content-Type"],
+                    })
 
-### APP CONFIG ###
-app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-
-
-@app.route("/scan_file", methods=["POST"])
-def upload_file():
-    """
-    Receives and uploads a file to ./files directory
-    """
-    if "file" not in request.files:
-        return make_response(jsonify({"error": "No file received"}), 400)
-
-    try:
-        input_file = request.files["file"]
-        file_name = secure_filename(input_file.filename)
-        input_file.save(os.path.join(app.config["UPLOAD_FOLDER"], file_name))
-
-        return make_response(scan_file(file_name))
-    except Exception as e:
-        return make_response(jsonify({"error": "Bad Request"}), 400)
-
-
-def scan_file(file_name):
-    """
-    Gets local file name, sends to virustotal API and return the file's analysis
-    :param file_name: Local file name (In ./files directory)
-    :return: Virustotal json format analysis
-    """
-    headers = {"x-apikey": VIRUSTOTAL_API_KEY}
-
-    try:
-        files = {"file": open(os.path.join(app.config["UPLOAD_FOLDER"], file_name), "rb")}
-    except:
-        return {"error": "Invalid file path"}
-
-    try:
-        res = requests.post(VIRUSTOTAL_BASE_URL + "/files", headers=headers, files=files)
-        res_id = res.json()["data"]["id"]
+        if "file" not in form.keys():
+            self.make_response(json.dumps({"error": "No file received"}), 400)
+            return
         
-        analysis_info = requests.get(VIRUSTOTAL_BASE_URL + f"/analyses/{res_id}", headers=headers)
+        try:
+            input_file = form['file']
+            file_name = input_file.filename
 
-        # Check whether analysis is completed before sending response
-        while analysis_info.json()["data"]["attributes"]["status"] != "completed":
-            time.sleep(2)
-            analysis_info = requests.get(VIRUSTOTAL_BASE_URL + f"/analyses/{res_id}", headers=headers)
+            with open(os.path.join(UPLOAD_FOLDER, file_name), "wb") as f:
+                f.write(input_file.file.read())
 
-        return analysis_info.json()
-    except:
-        return {"error": "Unable to connect to virustotal service"}
+            self.make_response(json.dumps(scan_file(file_name)), 200)            
+        except Exception as e:
+            self.make_response(json.dumps({"error": "Bad Request"}), 400)
+        return
+
+    def make_response(self, response, status=200):
+        self.send_response(status)
+        self.send_header("Content-type", "application/json")
+        self.send_header("Content-length", len(response))
+        self.end_headers()
+        self.wfile.write(bytes(response, "utf-8"))  
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    """Handle requests in a separate thread."""
+    daemon_threads = True
