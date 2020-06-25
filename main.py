@@ -1,6 +1,8 @@
 import logging
+import threading
 
-from app import app
+from app import Handler, ThreadedHTTPServer
+from config import PORT, HOST
 
 def init_loggers():
     """
@@ -21,7 +23,11 @@ def init_loggers():
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
 
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+
     root.addHandler(fh)
+    root.addHandler(ch)
     c_logger.addHandler(fh)
 
 def main():
@@ -29,7 +35,14 @@ def main():
     Main function - Initializes settings and runs the app
     """
     init_loggers()
-    app.run()
+    server = ThreadedHTTPServer((HOST, PORT), Handler)
+    logging.root.info("Starting server. use <Ctrl-C> to quit")
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        server.server_close()
+        logging.root.info("Server has stopped.")
 
 
 if __name__ == "__main__":
