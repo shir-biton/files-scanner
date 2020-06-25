@@ -4,7 +4,6 @@ import time
 
 from config import UPLOAD_FOLDER, VIRUSTOTAL_BASE_URL, VIRUSTOTAL_API_KEY
 
-
 def scan_file(file_name):
     """
     Gets local file name, sends to virustotal API and return the file's analysis
